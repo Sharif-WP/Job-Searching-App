@@ -262,3 +262,23 @@ Do not commit `.env`. It is ignored by Git.
 - Backend source: `ruff check app scripts tests` passes.
 - API health: <http://127.0.0.1:8000/api/v1/health>
 - Database health is reported as unavailable until `djm_dev` and valid `djm_user` credentials are configured.
+
+
+
+Open two PowerShell terminals at the project folder:
+
+1. Start the backend
+
+Keep this terminal running. API documentation:
+
+http://127.0.0.1:8000/docs
+
+2. Start the website
+
+Website:
+
+http://127.0.0.1:5173
+
+Stop each process by pressing Ctrl+C in its terminal.
+
+If the database has not yet been configured, create djm_dev and djm_test in pgAdmin and update the root .env file before
