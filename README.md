@@ -6,6 +6,8 @@ See `docs/decisions/` for the architecture and design decisions and `docs/design
 
 **Want to run it and try it yourself? Read `docs/HOW_TO_RUN.md`.**
 
+**Team quick start and dependency-free fallback:** read [`docs/TEAM_STARTUP.md`](docs/TEAM_STARTUP.md).
+
 ## Requirements
 
 Git, Python 3.12, Node.js LTS, PostgreSQL 18.
@@ -187,3 +189,76 @@ Registration can only create job seekers and employers. Create the first admin w
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 ruff and pytest against a PostgreSQL 18 test database, then ESLint, Vitest and the
 production build for the frontend.
+
+## Verified local startup (Windows)
+
+This workspace currently has a running PostgreSQL 18 service on port `5432`. Before the API can serve data, PostgreSQL must contain the development database and matching credentials configured in `.env`.
+
+### Start the API
+
+From the repository root:
+
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+API: <http://127.0.0.1:8000/docs>
+
+### Start the website
+
+Use the normal Vite server after dependencies are installed:
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+Website: <http://127.0.0.1:5173>
+
+If npm executables or `node_modules` are damaged, repair and build the frontend, then use the dependency-free local server:
+
+```powershell
+Set-Location frontend
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+npm install --include=dev --no-audit --no-fund
+npm run build
+..\backend\.venv\Scripts\python.exe local_server.py
+```
+
+The fallback server serves `frontend/dist` on <http://127.0.0.1:5173> and proxies `/api` to port `8000`.
+
+### Database setup
+
+In pgAdmin or `psql`, create a login role and both databases owned by that role, for example:
+
+```text
+Role:    djm_user
+Password: the password written in the root .env file
+Databases: djm_dev and djm_test
+```
+
+Then set `.env` to match:
+
+```text
+DATABASE_URL=postgresql+psycopg://djm_user:<password>@localhost:5432/djm_dev
+TEST_DATABASE_URL=postgresql+psycopg://djm_user:<password>@localhost:5432/djm_test
+```
+
+Apply migrations and load reference data:
+
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe ..\scripts\seed_reference.py
+```
+
+Do not commit `.env`. It is ignored by Git.
+
+### Current status checks
+
+- Frontend: `npm run lint` and `npm run build` pass.
+- Backend source: `ruff check app scripts tests` passes.
+- API health: <http://127.0.0.1:8000/api/v1/health>
+- Database health is reported as unavailable until `djm_dev` and valid `djm_user` credentials are configured.
